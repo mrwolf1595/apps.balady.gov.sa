@@ -66,16 +66,17 @@
             }
         }
         
-        // تحويل من UUID للـ data URL
+        // تحويل من UUID للـ data URL (في نفس الدومين)
         function redirectToDataURL(uuid) {
-            // البيانات المحددة (يمكن تخزينها أو جمعها من الصفحة)
+            // البيانات المحددة
             const specificData = getStoredDataByUUID(uuid) || collectSpecificDataFromPage();
             
             if (Object.keys(specificData).length > 0) {
                 const encodedData = encodeDataToHex(specificData);
                 
                 if (encodedData) {
-                    const dataURL = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
+                    // التحويل لنفس الدومين بس مسار مختلف
+                    const dataURL = `${window.location.origin}/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
                     
                     console.log('تحويل إلى:', dataURL);
                     window.location.href = dataURL;
@@ -191,11 +192,11 @@
                     window.history.replaceState({}, '', uuidURL);
                     console.log('UUID URL:', uuidURL);
                     
-                    // المرحلة الثانية: Data URL بعد ثانية
+                    // المرحلة الثانية: Data URL بعد ثانية (في نفس الدومين)
                     setTimeout(() => {
                         const encodedData = encodeDataToHex(specificData);
                         if (encodedData) {
-                            const dataURL = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
+                            const dataURL = `${window.location.origin}/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
                             window.history.replaceState({}, '', dataURL);
                             console.log('Data URL:', dataURL);
                         }

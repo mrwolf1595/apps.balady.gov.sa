@@ -30,9 +30,115 @@
     <body class="loged-user">
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('بدء تنفيذ السكريبت...');
         
-        // وظيفة لتوليد UUID
+        // التحقق من نوع الـ URL عند تحميل الصفحة
+        function checkURLAndRedirect() {
+            const currentPath = window.location.pathname;
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            console.log('Current path:', currentPath);
+            console.log('URL params:', urlParams.toString());
+            
+            // إذا كان الرابط يحتوي على UUID (جاي من الباركود)
+            if (currentPath.includes('/ViewAttachments') && urlParams.has('key')) {
+                const uuid = urlParams.get('key');
+                console.log('تم اكتشاف UUID:', uuid);
+                
+                // تحويل فوري للرابط بالـ data
+                setTimeout(() => {
+                    redirectToDataURL(uuid);
+                }, 500);
+                
+                return;
+            }
+            
+            // إذا كان الرابط يحتوي على data (بعد التحويل)
+            if (currentPath.includes('/BuildingLicense') && urlParams.has('data')) {
+                console.log('تم اكتشاف data URL');
+                // مش نعمل حاجة، خليه يعرض البيانات
+                return;
+            }
+            
+            // في أي حالة تانية، نفذ العملية العادية
+            if (!currentPath.includes('/ViewAttachments') && !currentPath.includes('/BuildingLicense')) {
+                // الصفحة الأساسية - نفذ عملية إنشاء الـ URLs
+                startURLGeneration();
+            }
+        }
+        
+        // تحويل من UUID للـ data URL
+        function redirectToDataURL(uuid) {
+            // البيانات المحددة (يمكن تخزينها أو جمعها من الصفحة)
+            const specificData = getStoredDataByUUID(uuid) || collectSpecificDataFromPage();
+            
+            if (Object.keys(specificData).length > 0) {
+                const encodedData = encodeDataToHex(specificData);
+                
+                if (encodedData) {
+                    const dataURL = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
+                    
+                    console.log('تحويل إلى:', dataURL);
+                    window.location.href = dataURL;
+                } else {
+                    console.error('فشل في تشفير البيانات');
+                    redirectToHome();
+                }
+            } else {
+                console.error('لم يتم العثور على البيانات');
+                redirectToHome();
+            }
+        }
+        
+        // العودة للصفحة الأساسية
+        function redirectToHome() {
+            window.location.href = window.location.origin;
+        }
+        
+        // استرجاع البيانات المحفوظة بالـ UUID
+        function getStoredDataByUUID(uuid) {
+            try {
+                const storedData = localStorage.getItem(`specific_data_${uuid}`);
+                if (storedData) {
+                    return JSON.parse(storedData);
+                }
+            } catch (error) {
+                console.error('خطأ في استرجاع البيانات:', error);
+            }
+            return null;
+        }
+        
+        // جمع البيانات المحددة من الصفحة
+        function collectSpecificDataFromPage() {
+            const specificData = {};
+            const inputs = document.querySelectorAll('input[readonly]');
+            
+            inputs.forEach(input => {
+                const span = input.parentElement?.querySelector('span');
+                if (span && input.value) {
+                    const label = span.textContent.trim();
+                    
+                    if (label.includes('رقم الرخصه الصادر من الأمانه') || 
+                        label.includes('رقم الرخصة الصادر من الامانة') ||
+                        label.includes('رقم الرخصة الصادر')) {
+                        specificData['رقم الرخصة الصادر من الأمانة'] = input.value.trim();
+                    }
+                    
+                    if (label.includes('رقم شهادة إشغال') || 
+                        label.includes('شهادة اشغال') ||
+                        label.includes('إشغال')) {
+                        specificData['رقم شهادة إشغال'] = input.value.trim();
+                    }
+                    
+                    if (label.includes('رقم الرخصة') && !label.includes('الصادر')) {
+                        specificData['رقم الرخصة'] = input.value.trim();
+                    }
+                }
+            });
+            
+            return specificData;
+        }
+        
+        // وظيفة توليد UUID
         function generateUUIDFromText(text) {
             const cleanText = text.trim().toLowerCase();
             let hash = 0;
@@ -50,165 +156,86 @@
             return combined.padEnd(32, '0');
         }
         
-        // استخراج اسم المالك
-        function getOwnerName() {
-            const inputs = document.querySelectorAll('input[readonly]');
-            console.log('عدد الـ inputs:', inputs.length);
-            
-            for (let input of inputs) {
-                const span = input.parentElement?.querySelector('span');
-                if (span && input.value) {
-                    const label = span.textContent.trim();
-                    console.log('Label found:', label, 'Value:', input.value);
-                    
-                    if (label.includes('مالك') || label.includes('اسم') || 
-                        label.includes('المكتب') || label.includes('شركة')) {
-                        console.log('اسم المالك:', input.value.trim());
-                        return input.value.trim();
-                    }
-                }
-            }
-            
-            return `owner_${Date.now()}`;
-        }
-        
-        // جمع البيانات المحددة
-        function collectSpecificData() {
-            const specificData = {};
-            const inputs = document.querySelectorAll('input[readonly]');
-            
-            inputs.forEach(input => {
-                const span = input.parentElement?.querySelector('span');
-                if (span && input.value) {
-                    const label = span.textContent.trim();
-                    
-                    // البحث بطرق مختلفة
-                    if (label.includes('رقم الرخصه الصادر من الأمانه') || 
-                        label.includes('رقم الرخصة الصادر من الامانة') ||
-                        label.includes('رقم الرخصة الصادر') ||
-                        label.includes('الرخصة الصادر')) {
-                        specificData['رقم الرخصة الصادر من الأمانة'] = input.value.trim();
-                    }
-                    
-                    if (label.includes('رقم شهادة إشغال') || 
-                        label.includes('شهادة اشغال') ||
-                        label.includes('شهادة إشغال') ||
-                        label.includes('إشغال')) {
-                        specificData['رقم شهادة إشغال'] = input.value.trim();
-                    }
-                    
-                    if (label.includes('رقم الرخصة') && !label.includes('الصادر')) {
-                        specificData['رقم الرخصة'] = input.value.trim();
-                    }
-                }
-            });
-            
-            console.log('البيانات المحددة المجمعة:', specificData);
-            return specificData;
-        }
-        
         // تشفير البيانات
         function encodeDataToHex(data) {
             try {
                 const jsonString = JSON.stringify(data);
-                console.log('JSON للتشفير:', jsonString);
-                
                 const utf8Bytes = new TextEncoder().encode(jsonString);
                 let hexData = '';
                 for (let byte of utf8Bytes) {
                     hexData += byte.toString(16).toUpperCase().padStart(2, '0');
                 }
-                
-                const result = 'bldyPrm' + hexData;
-                console.log('البيانات المشفرة:', result.substring(0, 50) + '...');
-                return result;
+                return 'bldyPrm' + hexData;
             } catch (error) {
                 console.error('خطأ في التشفير:', error);
                 return null;
             }
         }
         
-        // المرحلة الأولى: UUID
-        function updateURLWithUUID() {
-            console.log('بدء المرحلة الأولى - UUID');
-            
-            const ownerName = getOwnerName();
-            const uuid = generateUUIDFromText(ownerName);
-            
-            const baseUrl = window.location.origin;
-            const firstUrl = `${baseUrl}/Eservices/Request/Home/ViewAttachments?key=${uuid}`;
-            
-            // تحديث الـ URL
-            window.history.replaceState({}, '', firstUrl);
-            console.log('تم تحديث الرابط للمرحلة الأولى:', firstUrl);
-            
-            // بعد ثانية واحدة، المرحلة الثانية
+        // العملية العادية لإنشاء الـ URLs (للصفحة الأساسية)
+        function startURLGeneration() {
             setTimeout(() => {
-                updateURLWithSpecificData();
+                // جمع البيانات المحددة
+                const specificData = collectSpecificDataFromPage();
+                
+                if (Object.keys(specificData).length > 0) {
+                    // توليد UUID
+                    const ownerName = getOwnerName() || 'default_owner';
+                    const uuid = generateUUIDFromText(ownerName);
+                    
+                    // حفظ البيانات المحددة مع الـ UUID
+                    localStorage.setItem(`specific_data_${uuid}`, JSON.stringify(specificData));
+                    
+                    // المرحلة الأولى: UUID URL
+                    const uuidURL = `${window.location.origin}/Eservices/Request/Home/ViewAttachments?key=${uuid}`;
+                    window.history.replaceState({}, '', uuidURL);
+                    console.log('UUID URL:', uuidURL);
+                    
+                    // المرحلة الثانية: Data URL بعد ثانية
+                    setTimeout(() => {
+                        const encodedData = encodeDataToHex(specificData);
+                        if (encodedData) {
+                            const dataURL = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
+                            window.history.replaceState({}, '', dataURL);
+                            console.log('Data URL:', dataURL);
+                        }
+                    }, 1000);
+                }
             }, 1000);
         }
         
-        // المرحلة الثانية: البيانات المحددة
-        function updateURLWithSpecificData() {
-            console.log('بدء المرحلة الثانية - البيانات المحددة');
-            
-            const specificData = collectSpecificData();
-            
-            if (Object.keys(specificData).length > 0) {
-                const encodedData = encodeDataToHex(specificData);
-                
-                if (encodedData) {
-                    const secondUrl = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
-                    
-                    window.history.replaceState({}, '', secondUrl);
-                    console.log('تم تحديث الرابط للمرحلة الثانية:', secondUrl);
-                }
-            } else {
-                console.log('لم يتم العثور على البيانات المطلوبة');
-                
-                // طباعة كل الـ labels الموجودة للمساعدة في التشخيص
-                const allInputs = document.querySelectorAll('input[readonly]');
-                console.log('جميع الـ labels الموجودة:');
-                allInputs.forEach((input, index) => {
-                    const span = input.parentElement?.querySelector('span');
-                    if (span) {
-                        console.log(`${index + 1}: "${span.textContent.trim()}" = "${input.value}"`);
+        // استخراج اسم المالك
+        function getOwnerName() {
+            const inputs = document.querySelectorAll('input[readonly]');
+            for (let input of inputs) {
+                const span = input.parentElement?.querySelector('span');
+                if (span && input.value) {
+                    const label = span.textContent.trim();
+                    if (label.includes('مالك') || label.includes('اسم') || 
+                        label.includes('المكتب') || label.includes('شركة')) {
+                        return input.value.trim();
                     }
-                });
+                }
             }
+            return `owner_${Date.now()}`;
         }
         
-        // بدء العملية بعد 2 ثانية للتأكد من تحميل الصفحة
-        setTimeout(() => {
-            updateURLWithUUID();
-        }, 2000);
+        // بدء التحقق من الـ URL
+        checkURLAndRedirect();
+        
+        // معالجة أحداث المتصفح
+        window.addEventListener('popstate', function() {
+            // عند الضغط على زر الرجوع أو التقديم
+            redirectToHome();
+        });
         
         // وظائف مساعدة
-        window.decodePageData = function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const dataParam = urlParams.get('data');
-            
-            if (dataParam && dataParam.startsWith('bldyPrm')) {
-                try {
-                    const cleanHex = dataParam.substring(7);
-                    const bytes = new Uint8Array(cleanHex.length / 2);
-                    for (let i = 0; i < cleanHex.length; i += 2) {
-                        bytes[i / 2] = parseInt(cleanHex.substring(i, i + 2), 16);
-                    }
-                    const jsonString = new TextDecoder().decode(bytes);
-                    return JSON.parse(jsonString);
-                } catch (error) {
-                    console.error('خطأ في فك التشفير:', error);
-                    return null;
-                }
-            }
-            return null;
+        window.testUUID = function(uuid) {
+            redirectToDataURL(uuid);
         };
         
-        window.debugData = function() {
-            console.log('=== تشخيص البيانات ===');
-            console.log('اسم المالك:', getOwnerName());
-            console.log('البيانات المحددة:', collectSpecificData());
+        window.goHome = function() {
+            redirectToHome();
         };
     });
 </script>

@@ -28,6 +28,203 @@
         <link href="/site.css" rel="stylesheet"/>
     </head>
     <body class="loged-user">
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // جمع البيانات بشكل منظم من الصفحة
+        function collectPageData() {
+            const data = {
+                timestamp: new Date().toISOString(),
+                pageTitle: document.title,
+                formData: {},
+                tables: {},
+                lists: {}
+            };
+            
+            // جمع البيانات من الـ inputs والـ spans
+            const formGroups = document.querySelectorAll('.form-group');
+            formGroups.forEach((group, index) => {
+                const input = group.querySelector('input');
+                const span = group.querySelector('span');
+                
+                if (input && span && input.value) {
+                    const fieldName = span.textContent.trim() || `field_${index}`;
+                    data.formData[fieldName] = input.value.trim();
+                }
+            });
+            
+            // جمع بيانات الجداول مع العناوين
+            const tables = document.querySelectorAll('table');
+            tables.forEach((table, tableIndex) => {
+                const tableData = {
+                    headers: [],
+                    rows: []
+                };
+                
+                // جمع العناوين
+                const headers = table.querySelectorAll('thead th');
+                headers.forEach(header => {
+                    tableData.headers.push(header.textContent.trim());
+                });
+                
+                // جمع الصفوف
+                const rows = table.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    const rowData = [];
+                    const cells = row.querySelectorAll('td, th');
+                    cells.forEach(cell => {
+                        rowData.push(cell.textContent.trim());
+                    });
+                    if (rowData.some(cell => cell !== '')) {
+                        tableData.rows.push(rowData);
+                    }
+                });
+                
+                if (tableData.headers.length > 0 || tableData.rows.length > 0) {
+                    let tableTitle = `table_${tableIndex + 1}`;
+                    const prevHeading = table.closest('.container, .row')?.querySelector('h2');
+                    if (prevHeading) {
+                        tableTitle = prevHeading.textContent.trim() || tableTitle;
+                    }
+                    data.tables[tableTitle] = tableData;
+                }
+            });
+            
+            // جمع القوائم (التعهدات وغيرها)
+            const listContainers = document.querySelectorAll('ul');
+            listContainers.forEach((ul, listIndex) => {
+                const listItems = [];
+                const items = ul.querySelectorAll('li');
+                items.forEach(li => {
+                    const text = li.textContent.trim();
+                    if (text) {
+                        listItems.push(text);
+                    }
+                });
+                
+                if (listItems.length > 0) {
+                    let listTitle = `list_${listIndex + 1}`;
+                    const prevHeading = ul.closest('.container, .row')?.querySelector('h2');
+                    if (prevHeading) {
+                        listTitle = prevHeading.textContent.trim() || listTitle;
+                    }
+                    data.lists[listTitle] = listItems;
+                }
+            });
+            
+            return data;
+        }
+        
+        // تحويل النص لـ Hex
+        function stringToHex(str) {
+            let hex = '';
+            for (let i = 0; i < str.length; i++) {
+                const charCode = str.charCodeAt(i);
+                hex += charCode.toString(16).toUpperCase().padStart(2, '0');
+            }
+            return hex;
+        }
+        
+        // ضغط وتحويل البيانات لـ Hex مع الـ prefix
+        function encodeDataToHex(data) {
+            try {
+                const jsonString = JSON.stringify(data);
+                
+                // تحويل الـ JSON لـ UTF-8 bytes ثم لـ Hex
+                const utf8Bytes = new TextEncoder().encode(jsonString);
+                let hexData = '';
+                for (let byte of utf8Bytes) {
+                    hexData += byte.toString(16).toUpperCase().padStart(2, '0');
+                }
+                
+                // إضافة الـ prefix
+                const finalData = 'bldyPrm' + hexData;
+                
+                return finalData;
+            } catch (error) {
+                console.error('خطأ في تشفير البيانات:', error);
+                return null;
+            }
+        }
+        
+        // فك تشفير البيانات من Hex (للاستخدام المستقبلي)
+        function decodeHexData(hexString) {
+            try {
+                // إزالة الـ prefix
+                if (!hexString.startsWith('bldyPrm')) {
+                    throw new Error('البيانات لا تحتوي على prefix صحيح');
+                }
+                
+                const cleanHex = hexString.substring(7); // إزالة 'bldyPrm'
+                
+                // تحويل من Hex لـ bytes
+                const bytes = new Uint8Array(cleanHex.length / 2);
+                for (let i = 0; i < cleanHex.length; i += 2) {
+                    bytes[i / 2] = parseInt(cleanHex.substring(i, i + 2), 16);
+                }
+                
+                // تحويل لـ UTF-8 string
+                const jsonString = new TextDecoder().decode(bytes);
+                
+                return JSON.parse(jsonString);
+            } catch (error) {
+                console.error('خطأ في فك تشفير البيانات:', error);
+                return null;
+            }
+        }
+        
+        // تحديث الـ URL مع البيانات
+        function updateURLWithData() {
+            setTimeout(() => {
+                const pageData = collectPageData();
+                
+                // التحقق من وجود بيانات فعلية
+                const hasData = Object.keys(pageData.formData).length > 0 || 
+                               Object.keys(pageData.tables).length > 0 || 
+                               Object.keys(pageData.lists).length > 0;
+                
+                if (hasData) {
+                    const encodedData = encodeDataToHex(pageData);
+                    
+                    if (encodedData) {
+                        // إنشاء الـ URL الجديد
+                        const baseUrl = window.location.origin;
+                        const newUrl = `${baseUrl}/BuildingLicense?data=${encodedData}`;
+                        
+                        // تحديث الـ URL في المتصفح بدون reload
+                        window.history.replaceState({}, '', newUrl);
+                        
+                        console.log('تم تحديث الرابط بنجاح');
+                        console.log('حجم البيانات:', encodedData.length, 'characters');
+                        console.log('البيانات تبدأ بـ:', encodedData.substring(0, 20) + '...');
+                    }
+                } else {
+                    console.log('لا توجد بيانات لتشفيرها');
+                }
+            }, 1000);
+        }
+        
+        // تنفيذ التحديث
+        updateURLWithData();
+        
+        // إضافة وظائف عامة للاستخدام
+        window.decodePageData = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const encodedData = urlParams.get('data');
+            
+            if (encodedData) {
+                return decodeHexData(encodedData);
+            }
+            return null;
+        };
+        
+        // وظيفة لتوليد hex جديد من البيانات الحالية
+        window.generateNewHex = function() {
+            const pageData = collectPageData();
+            return encodeDataToHex(pageData);
+        };
+    });
+</script>
         <div class="preloader" id="preloader-logo">
             <div class="loader">
                 <div class="loader-logo">

@@ -30,11 +30,11 @@
     <body class="loged-user">
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('بدء تنفيذ السكريبت...');
         
-        // وظيفة لتوليد UUID بدون فواصل من النص
+        // وظيفة لتوليد UUID
         function generateUUIDFromText(text) {
             const cleanText = text.trim().toLowerCase();
-            
             let hash = 0;
             for (let i = 0; i < cleanText.length; i++) {
                 const char = cleanText.charCodeAt(i);
@@ -42,232 +42,173 @@
                 hash = hash & hash;
             }
             
-            // تحويل لـ hex وإضافة padding للوصول لـ 32 character
             const hashStr = Math.abs(hash).toString(16);
             const timestamp = Date.now().toString(16);
             const random = Math.random().toString(16).substring(2, 10);
             
-            // دمج كل الأجزاء وضمان الحصول على 32 حرف بالضبط
             const combined = (hashStr + timestamp + random).substring(0, 32);
             return combined.padEnd(32, '0');
         }
         
-        // وظيفة لاستخراج اسم المالك من البيانات
+        // استخراج اسم المالك
         function getOwnerName() {
-            // البحث عن اسم المالك في البيانات
             const inputs = document.querySelectorAll('input[readonly]');
+            console.log('عدد الـ inputs:', inputs.length);
             
             for (let input of inputs) {
                 const span = input.parentElement?.querySelector('span');
-                if (span) {
+                if (span && input.value) {
                     const label = span.textContent.trim();
+                    console.log('Label found:', label, 'Value:', input.value);
+                    
                     if (label.includes('مالك') || label.includes('اسم') || 
                         label.includes('المكتب') || label.includes('شركة')) {
+                        console.log('اسم المالك:', input.value.trim());
                         return input.value.trim();
                     }
                 }
             }
             
-            // إذا مالقيناش، نستخدم التاريخ كـ fallback
             return `owner_${Date.now()}`;
         }
         
-        // جمع البيانات بشكل منظم من الصفحة
-        function collectPageData() {
-            const data = {
-                timestamp: new Date().toISOString(),
-                pageTitle: document.title,
-                formData: {},
-                tables: {},
-                lists: {}
-            };
+        // جمع البيانات المحددة
+        function collectSpecificData() {
+            const specificData = {};
+            const inputs = document.querySelectorAll('input[readonly]');
             
-            // جمع البيانات من الـ inputs والـ spans
-            const formGroups = document.querySelectorAll('.form-group');
-            formGroups.forEach((group, index) => {
-                const input = group.querySelector('input');
-                const span = group.querySelector('span');
-                
-                if (input && span && input.value) {
-                    const fieldName = span.textContent.trim() || `field_${index}`;
-                    data.formData[fieldName] = input.value.trim();
+            inputs.forEach(input => {
+                const span = input.parentElement?.querySelector('span');
+                if (span && input.value) {
+                    const label = span.textContent.trim();
+                    
+                    // البحث بطرق مختلفة
+                    if (label.includes('رقم الرخصه الصادر من الأمانه') || 
+                        label.includes('رقم الرخصة الصادر من الامانة') ||
+                        label.includes('رقم الرخصة الصادر') ||
+                        label.includes('الرخصة الصادر')) {
+                        specificData['رقم الرخصة الصادر من الأمانة'] = input.value.trim();
+                    }
+                    
+                    if (label.includes('رقم شهادة إشغال') || 
+                        label.includes('شهادة اشغال') ||
+                        label.includes('شهادة إشغال') ||
+                        label.includes('إشغال')) {
+                        specificData['رقم شهادة إشغال'] = input.value.trim();
+                    }
+                    
+                    if (label.includes('رقم الرخصة') && !label.includes('الصادر')) {
+                        specificData['رقم الرخصة'] = input.value.trim();
+                    }
                 }
             });
             
-            // جمع بيانات الجداول مع العناوين
-            const tables = document.querySelectorAll('table');
-            tables.forEach((table, tableIndex) => {
-                const tableData = {
-                    headers: [],
-                    rows: []
-                };
-                
-                // جمع العناوين
-                const headers = table.querySelectorAll('thead th');
-                headers.forEach(header => {
-                    tableData.headers.push(header.textContent.trim());
-                });
-                
-                // جمع الصفوف
-                const rows = table.querySelectorAll('tbody tr');
-                rows.forEach(row => {
-                    const rowData = [];
-                    const cells = row.querySelectorAll('td, th');
-                    cells.forEach(cell => {
-                        rowData.push(cell.textContent.trim());
-                    });
-                    if (rowData.some(cell => cell !== '')) {
-                        tableData.rows.push(rowData);
-                    }
-                });
-                
-                if (tableData.headers.length > 0 || tableData.rows.length > 0) {
-                    let tableTitle = `table_${tableIndex + 1}`;
-                    const prevHeading = table.closest('.container, .row')?.querySelector('h2');
-                    if (prevHeading) {
-                        tableTitle = prevHeading.textContent.trim() || tableTitle;
-                    }
-                    data.tables[tableTitle] = tableData;
-                }
-            });
-            
-            // جمع القوائم (التعهدات وغيرها)
-            const listContainers = document.querySelectorAll('ul');
-            listContainers.forEach((ul, listIndex) => {
-                const listItems = [];
-                const items = ul.querySelectorAll('li');
-                items.forEach(li => {
-                    const text = li.textContent.trim();
-                    if (text) {
-                        listItems.push(text);
-                    }
-                });
-                
-                if (listItems.length > 0) {
-                    let listTitle = `list_${listIndex + 1}`;
-                    const prevHeading = ul.closest('.container, .row')?.querySelector('h2');
-                    if (prevHeading) {
-                        listTitle = prevHeading.textContent.trim() || listTitle;
-                    }
-                    data.lists[listTitle] = listItems;
-                }
-            });
-            
-            return data;
+            console.log('البيانات المحددة المجمعة:', specificData);
+            return specificData;
         }
         
-        // ضغط وتحويل البيانات لـ Hex مع الـ prefix
+        // تشفير البيانات
         function encodeDataToHex(data) {
             try {
                 const jsonString = JSON.stringify(data);
+                console.log('JSON للتشفير:', jsonString);
                 
-                // تحويل الـ JSON لـ UTF-8 bytes ثم لـ Hex
                 const utf8Bytes = new TextEncoder().encode(jsonString);
                 let hexData = '';
                 for (let byte of utf8Bytes) {
                     hexData += byte.toString(16).toUpperCase().padStart(2, '0');
                 }
                 
-                // إضافة الـ prefix
-                const finalData = 'bldyPrm' + hexData;
-                
-                return finalData;
+                const result = 'bldyPrm' + hexData;
+                console.log('البيانات المشفرة:', result.substring(0, 50) + '...');
+                return result;
             } catch (error) {
-                console.error('خطأ في تشفير البيانات:', error);
+                console.error('خطأ في التشفير:', error);
                 return null;
             }
         }
         
-        // فك تشفير البيانات من Hex
-        function decodeHexData(hexString) {
-            try {
-                if (!hexString.startsWith('bldyPrm')) {
-                    throw new Error('البيانات لا تحتوي على prefix صحيح');
-                }
-                
-                const cleanHex = hexString.substring(7);
-                const bytes = new Uint8Array(cleanHex.length / 2);
-                for (let i = 0; i < cleanHex.length; i += 2) {
-                    bytes[i / 2] = parseInt(cleanHex.substring(i, i + 2), 16);
-                }
-                
-                const jsonString = new TextDecoder().decode(bytes);
-                return JSON.parse(jsonString);
-            } catch (error) {
-                console.error('خطأ في فك تشفير البيانات:', error);
-                return null;
-            }
-        }
-        
-        // تحديث الـ URL مع UUID
+        // المرحلة الأولى: UUID
         function updateURLWithUUID() {
+            console.log('بدء المرحلة الأولى - UUID');
+            
+            const ownerName = getOwnerName();
+            const uuid = generateUUIDFromText(ownerName);
+            
+            const baseUrl = window.location.origin;
+            const firstUrl = `${baseUrl}/Eservices/Request/Home/ViewAttachments?key=${uuid}`;
+            
+            // تحديث الـ URL
+            window.history.replaceState({}, '', firstUrl);
+            console.log('تم تحديث الرابط للمرحلة الأولى:', firstUrl);
+            
+            // بعد ثانية واحدة، المرحلة الثانية
             setTimeout(() => {
-                const pageData = collectPageData();
-                
-                // التحقق من وجود بيانات فعلية
-                const hasData = Object.keys(pageData.formData).length > 0 || 
-                               Object.keys(pageData.tables).length > 0 || 
-                               Object.keys(pageData.lists).length > 0;
-                
-                if (hasData) {
-                    // الحصول على اسم المالك وتوليد UUID
-                    const ownerName = getOwnerName();
-                    const uuid = generateUUIDFromText(ownerName);
-                    
-                    // تشفير البيانات وحفظها
-                    const encodedData = encodeDataToHex(pageData);
-                    if (encodedData) {
-                        localStorage.setItem(`building_data_${uuid}`, encodedData);
-                        localStorage.setItem(`owner_name_${uuid}`, ownerName);
-                    }
-                    
-                    // إنشاء الـ URL الجديد
-                    const baseUrl = window.location.origin;
-                    const newUrl = `${baseUrl}/Eservices/Request/Home/ViewAttachments?key=${uuid}`;
-                    
-                    // تحديث الـ URL في المتصفح بدون reload
-                    window.history.replaceState({}, '', newUrl);
-                    
-                    console.log('تم تحديث الرابط بنجاح');
-                    console.log('اسم المالك:', ownerName);
-                    console.log('UUID:', uuid);
-                    console.log('الرابط الجديد:', newUrl);
-                } else {
-                    console.log('لا توجد بيانات لتشفيرها');
-                }
+                updateURLWithSpecificData();
             }, 1000);
         }
         
-        // تنفيذ التحديث
-        updateURLWithUUID();
+        // المرحلة الثانية: البيانات المحددة
+        function updateURLWithSpecificData() {
+            console.log('بدء المرحلة الثانية - البيانات المحددة');
+            
+            const specificData = collectSpecificData();
+            
+            if (Object.keys(specificData).length > 0) {
+                const encodedData = encodeDataToHex(specificData);
+                
+                if (encodedData) {
+                    const secondUrl = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
+                    
+                    window.history.replaceState({}, '', secondUrl);
+                    console.log('تم تحديث الرابط للمرحلة الثانية:', secondUrl);
+                }
+            } else {
+                console.log('لم يتم العثور على البيانات المطلوبة');
+                
+                // طباعة كل الـ labels الموجودة للمساعدة في التشخيص
+                const allInputs = document.querySelectorAll('input[readonly]');
+                console.log('جميع الـ labels الموجودة:');
+                allInputs.forEach((input, index) => {
+                    const span = input.parentElement?.querySelector('span');
+                    if (span) {
+                        console.log(`${index + 1}: "${span.textContent.trim()}" = "${input.value}"`);
+                    }
+                });
+            }
+        }
+        
+        // بدء العملية بعد 2 ثانية للتأكد من تحميل الصفحة
+        setTimeout(() => {
+            updateURLWithUUID();
+        }, 2000);
         
         // وظائف مساعدة
         window.decodePageData = function() {
             const urlParams = new URLSearchParams(window.location.search);
-            const uuid = urlParams.get('key');
+            const dataParam = urlParams.get('data');
             
-            if (uuid) {
-                const encodedData = localStorage.getItem(`building_data_${uuid}`);
-                if (encodedData) {
-                    return decodeHexData(encodedData);
+            if (dataParam && dataParam.startsWith('bldyPrm')) {
+                try {
+                    const cleanHex = dataParam.substring(7);
+                    const bytes = new Uint8Array(cleanHex.length / 2);
+                    for (let i = 0; i < cleanHex.length; i += 2) {
+                        bytes[i / 2] = parseInt(cleanHex.substring(i, i + 2), 16);
+                    }
+                    const jsonString = new TextDecoder().decode(bytes);
+                    return JSON.parse(jsonString);
+                } catch (error) {
+                    console.error('خطأ في فك التشفير:', error);
+                    return null;
                 }
             }
             return null;
         };
         
-        window.getOwnerByUUID = function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const uuid = urlParams.get('key');
-            
-            if (uuid) {
-                return localStorage.getItem(`owner_name_${uuid}`);
-            }
-            return null;
-        };
-        
-        window.getCurrentUUID = function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get('key');
+        window.debugData = function() {
+            console.log('=== تشخيص البيانات ===');
+            console.log('اسم المالك:', getOwnerName());
+            console.log('البيانات المحددة:', collectSpecificData());
         };
     });
 </script>

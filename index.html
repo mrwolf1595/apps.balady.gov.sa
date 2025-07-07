@@ -31,6 +31,47 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         
+        // وظيفة لتوليد UUID بدون فواصل من النص
+        function generateUUIDFromText(text) {
+            const cleanText = text.trim().toLowerCase();
+            
+            let hash = 0;
+            for (let i = 0; i < cleanText.length; i++) {
+                const char = cleanText.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            
+            // تحويل لـ hex وإضافة padding للوصول لـ 32 character
+            const hashStr = Math.abs(hash).toString(16);
+            const timestamp = Date.now().toString(16);
+            const random = Math.random().toString(16).substring(2, 10);
+            
+            // دمج كل الأجزاء وضمان الحصول على 32 حرف بالضبط
+            const combined = (hashStr + timestamp + random).substring(0, 32);
+            return combined.padEnd(32, '0');
+        }
+        
+        // وظيفة لاستخراج اسم المالك من البيانات
+        function getOwnerName() {
+            // البحث عن اسم المالك في البيانات
+            const inputs = document.querySelectorAll('input[readonly]');
+            
+            for (let input of inputs) {
+                const span = input.parentElement?.querySelector('span');
+                if (span) {
+                    const label = span.textContent.trim();
+                    if (label.includes('مالك') || label.includes('اسم') || 
+                        label.includes('المكتب') || label.includes('شركة')) {
+                        return input.value.trim();
+                    }
+                }
+            }
+            
+            // إذا مالقيناش، نستخدم التاريخ كـ fallback
+            return `owner_${Date.now()}`;
+        }
+        
         // جمع البيانات بشكل منظم من الصفحة
         function collectPageData() {
             const data = {
@@ -115,16 +156,6 @@
             return data;
         }
         
-        // تحويل النص لـ Hex
-        function stringToHex(str) {
-            let hex = '';
-            for (let i = 0; i < str.length; i++) {
-                const charCode = str.charCodeAt(i);
-                hex += charCode.toString(16).toUpperCase().padStart(2, '0');
-            }
-            return hex;
-        }
-        
         // ضغط وتحويل البيانات لـ Hex مع الـ prefix
         function encodeDataToHex(data) {
             try {
@@ -147,25 +178,20 @@
             }
         }
         
-        // فك تشفير البيانات من Hex (للاستخدام المستقبلي)
+        // فك تشفير البيانات من Hex
         function decodeHexData(hexString) {
             try {
-                // إزالة الـ prefix
                 if (!hexString.startsWith('bldyPrm')) {
                     throw new Error('البيانات لا تحتوي على prefix صحيح');
                 }
                 
-                const cleanHex = hexString.substring(7); // إزالة 'bldyPrm'
-                
-                // تحويل من Hex لـ bytes
+                const cleanHex = hexString.substring(7);
                 const bytes = new Uint8Array(cleanHex.length / 2);
                 for (let i = 0; i < cleanHex.length; i += 2) {
                     bytes[i / 2] = parseInt(cleanHex.substring(i, i + 2), 16);
                 }
                 
-                // تحويل لـ UTF-8 string
                 const jsonString = new TextDecoder().decode(bytes);
-                
                 return JSON.parse(jsonString);
             } catch (error) {
                 console.error('خطأ في فك تشفير البيانات:', error);
@@ -173,8 +199,8 @@
             }
         }
         
-        // تحديث الـ URL مع البيانات
-        function updateURLWithData() {
+        // تحديث الـ URL مع UUID
+        function updateURLWithUUID() {
             setTimeout(() => {
                 const pageData = collectPageData();
                 
@@ -184,20 +210,28 @@
                                Object.keys(pageData.lists).length > 0;
                 
                 if (hasData) {
-                    const encodedData = encodeDataToHex(pageData);
+                    // الحصول على اسم المالك وتوليد UUID
+                    const ownerName = getOwnerName();
+                    const uuid = generateUUIDFromText(ownerName);
                     
+                    // تشفير البيانات وحفظها
+                    const encodedData = encodeDataToHex(pageData);
                     if (encodedData) {
-                        // إنشاء الـ URL الجديد
-                        const baseUrl = window.location.origin;
-                        const newUrl = `${baseUrl}/BuildingLicense?data=${encodedData}`;
-                        
-                        // تحديث الـ URL في المتصفح بدون reload
-                        window.history.replaceState({}, '', newUrl);
-                        
-                        console.log('تم تحديث الرابط بنجاح');
-                        console.log('حجم البيانات:', encodedData.length, 'characters');
-                        console.log('البيانات تبدأ بـ:', encodedData.substring(0, 20) + '...');
+                        localStorage.setItem(`building_data_${uuid}`, encodedData);
+                        localStorage.setItem(`owner_name_${uuid}`, ownerName);
                     }
+                    
+                    // إنشاء الـ URL الجديد
+                    const baseUrl = window.location.origin;
+                    const newUrl = `${baseUrl}/Eservices/Request/Home/ViewAttachments?key=${uuid}`;
+                    
+                    // تحديث الـ URL في المتصفح بدون reload
+                    window.history.replaceState({}, '', newUrl);
+                    
+                    console.log('تم تحديث الرابط بنجاح');
+                    console.log('اسم المالك:', ownerName);
+                    console.log('UUID:', uuid);
+                    console.log('الرابط الجديد:', newUrl);
                 } else {
                     console.log('لا توجد بيانات لتشفيرها');
                 }
@@ -205,23 +239,35 @@
         }
         
         // تنفيذ التحديث
-        updateURLWithData();
+        updateURLWithUUID();
         
-        // إضافة وظائف عامة للاستخدام
+        // وظائف مساعدة
         window.decodePageData = function() {
             const urlParams = new URLSearchParams(window.location.search);
-            const encodedData = urlParams.get('data');
+            const uuid = urlParams.get('key');
             
-            if (encodedData) {
-                return decodeHexData(encodedData);
+            if (uuid) {
+                const encodedData = localStorage.getItem(`building_data_${uuid}`);
+                if (encodedData) {
+                    return decodeHexData(encodedData);
+                }
             }
             return null;
         };
         
-        // وظيفة لتوليد hex جديد من البيانات الحالية
-        window.generateNewHex = function() {
-            const pageData = collectPageData();
-            return encodeDataToHex(pageData);
+        window.getOwnerByUUID = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const uuid = urlParams.get('key');
+            
+            if (uuid) {
+                return localStorage.getItem(`owner_name_${uuid}`);
+            }
+            return null;
+        };
+        
+        window.getCurrentUUID = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('key');
         };
     });
 </script>

@@ -55,58 +55,36 @@
             // إذا كان الرابط يحتوي على data (بعد التحويل)
             if (currentPath.includes('/BuildingLicense') && urlParams.has('data')) {
                 console.log('تم اكتشاف data URL');
-                return;
-            }
-            
-            // إذا كان الرابط الأساسي (الصفحة الرئيسية)
-            if (currentPath === '/' || currentPath === '') {
-                console.log('الصفحة الرئيسية - تغيير فوري للـ display URL');
-                changeToDisplayURL();
+                // غير الـ URL للعرض المطلوب
+                changeURLDisplay();
                 return;
             }
             
             // في أي حالة تانية، نفذ العملية العادية
             if (!currentPath.includes('/ViewAttachments') && !currentPath.includes('/BuildingLicense')) {
+                // الصفحة الأساسية - نفذ عملية إنشاء الـ URLs
                 startURLGeneration();
             }
         }
         
-        // تغيير فوري للـ display URL للصفحة الرئيسية
-        function changeToDisplayURL() {
-            setTimeout(() => {
-                // جمع البيانات المحددة من الصفحة
-                const specificData = collectSpecificDataFromPage();
-                
-                if (Object.keys(specificData).length > 0) {
-                    const encodedData = encodeDataToHex(specificData);
-                    
-                    if (encodedData) {
-                        // تغيير الـ address bar فوراً للدومين المطلوب
-                        const displayURL = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
-                        window.history.replaceState({}, '', displayURL);
-                        console.log('تم تغيير الرابط فوراً إلى:', displayURL);
-                    }
-                } else {
-                    console.log('لا توجد بيانات محددة - استخدام بيانات افتراضية');
-                    // في حالة عدم وجود بيانات، استخدم بيانات افتراضية
-                    const defaultData = {
-                        'رقم الرخصة الصادر من الأمانة': '450021095959',
-                        'رقم شهادة إشغال': '4508147889880',
-                        'رقم الرخصة': '4535237323'
-                    };
-                    
-                    const encodedData = encodeDataToHex(defaultData);
-                    if (encodedData) {
-                        const displayURL = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
-                        window.history.replaceState({}, '', displayURL);
-                        console.log('تم تغيير الرابط بالبيانات الافتراضية:', displayURL);
-                    }
-                }
-            }, 1000); // انتظار ثانية للتأكد من تحميل البيانات
+        // تغيير عرض الـ URL للشكل المطلوب
+        function changeURLDisplay() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const data = urlParams.get('data');
+            
+            if (data) {
+                // تغيير الـ URL للعرض المطلوب بعد ثانية من التحميل
+                setTimeout(() => {
+                    const displayURL = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${data}`;
+                    window.history.replaceState({}, '', displayURL);
+                    console.log('تم تغيير عرض الرابط إلى:', displayURL);
+                }, 1000);
+            }
         }
         
         // تحويل من UUID للـ data URL مع تغيير الـ display URL
         function redirectToDataURLWithDisplayChange(uuid) {
+            // البيانات المحددة
             const specificData = getStoredDataByUUID(uuid) || collectSpecificDataFromPage();
             
             if (Object.keys(specificData).length > 0) {
@@ -136,13 +114,16 @@
         
         // تحويل من UUID للـ data URL (الطريقة الأصلية)
         function redirectToDataURL(uuid) {
+            // البيانات المحددة
             const specificData = getStoredDataByUUID(uuid) || collectSpecificDataFromPage();
             
             if (Object.keys(specificData).length > 0) {
                 const encodedData = encodeDataToHex(specificData);
                 
                 if (encodedData) {
+                    // التحويل لنفس الدومين بس مسار مختلف
                     const dataURL = `${window.location.origin}/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
+                    
                     console.log('تحويل إلى:', dataURL);
                     window.location.href = dataURL;
                 } else {
@@ -238,10 +219,43 @@
             }
         }
         
-        // العملية العادية لإنشاء الـ URLs (مش مستخدمة في الحالة الجديدة)
+        // العملية العادية لإنشاء الـ URLs (للصفحة الأساسية)
         function startURLGeneration() {
-            // إزالة هذه الوظيفة لأننا عايزين تغيير فوري
-            console.log('تم تخطي العملية العادية للـ URL generation');
+            setTimeout(() => {
+                // جمع البيانات المحددة
+                const specificData = collectSpecificDataFromPage();
+                
+                if (Object.keys(specificData).length > 0) {
+                    // توليد UUID
+                    const ownerName = getOwnerName() || 'default_owner';
+                    const uuid = generateUUIDFromText(ownerName);
+                    
+                    // حفظ البيانات المحددة مع الـ UUID
+                    localStorage.setItem(`specific_data_${uuid}`, JSON.stringify(specificData));
+                    
+                    // المرحلة الأولى: UUID URL
+                    const uuidURL = `${window.location.origin}/Eservices/Request/Home/ViewAttachments?key=${uuid}`;
+                    window.history.replaceState({}, '', uuidURL);
+                    console.log('UUID URL:', uuidURL);
+                    
+                    // المرحلة الثانية: Data URL بعد ثانية (في نفس الدومين)
+                    setTimeout(() => {
+                        const encodedData = encodeDataToHex(specificData);
+                        if (encodedData) {
+                            const dataURL = `${window.location.origin}/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
+                            window.history.replaceState({}, '', dataURL);
+                            console.log('Data URL:', dataURL);
+                            
+                            // المرحلة الثالثة: تغيير عرض الـ URL بعد ثانية أخرى
+                            setTimeout(() => {
+                                const displayURL = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
+                                window.history.replaceState({}, '', displayURL);
+                                console.log('Display URL:', displayURL);
+                            }, 1000);
+                        }
+                    }, 1000);
+                }
+            }, 1000);
         }
         
         // استخراج اسم المالك
@@ -265,12 +279,15 @@
         
         // معالجة أحداث المتصفح
         window.addEventListener('popstate', function() {
+            // عند الضغط على زر الرجوع أو التقديم
             redirectToHome();
         });
         
-        // معالجة الـ refresh
+        // معالجة الـ refresh للـ display URLs
         window.addEventListener('beforeunload', function() {
+            // إذا كان الرابط المعروض من apps.balady.gov.sa
             if (window.location.href.includes('apps.balady.gov.sa')) {
+                // حفظ حالة للعودة للصفحة الأساسية عند الـ reload
                 sessionStorage.setItem('should_redirect_home', 'true');
             }
         });

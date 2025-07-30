@@ -1,0 +1,4 @@
+/Eservices/Request/Home/ViewAttachments    /index.html   200
+/Eservices/Request/Home/ViewAttachments/*  /index.html   200
+/Eservices/Request/Public/BuildingLicense  /index.html   200
+/*                                         /index.html   200

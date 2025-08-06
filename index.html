@@ -26,45 +26,6 @@
         <link href="https://apps.balady.gov.sa/BALADYCDN/Content/plugins/DataTables/Style.css" rel="stylesheet"/>
         <link href="https://apps.balady.gov.sa/BALADYCDN/Content/style.css?v=1" rel="stylesheet" type="text/css">
         <link href="/site.css" rel="stylesheet"/>
-        <script>
-  // جلب قيمة key من الرابط
-
-// جلب قيمة key من الرابط
-const params = new URLSearchParams(window.location.search);
-const key = params.get('key');
-
-// جدول التوجيه: كل key يروح على ملف معيّن
-const routes = {
-    '7e46a31919881b2bf3e5d5ca6f600000': '/index1.html',
-    '5047665a19881b2a74ff415dd6c00000': '/index.html'
-};
-
-// التحقق من المسار الحالي
-const currentPath = window.location.pathname;
-
-// إذا كان المسار يحتوي على ViewAttachments وله key صحيح
-if (currentPath.includes('/ViewAttachments') && key && routes[key]) {
-    // احتفظ بكل المعاملات الأخرى
-    const targetURL = routes[key] + window.location.search;
-    console.log('Redirecting to:', targetURL);
-    
-    // إعادة توجيه فورية
-    window.location.replace(targetURL);
-}
-// إذا لم يكن key موجود أو غير صحيح
-else if (currentPath.includes('/ViewAttachments')) {
-    // عرض رسالة خطأ أو التوجيه للصفحة الرئيسية
-    document.addEventListener('DOMContentLoaded', function() {
-        document.body.innerHTML = `
-            <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
-                <h2>خطأ في الرابط</h2>
-                <p>المفتاح المطلوب غير صحيح: ${key || 'غير موجود'}</p>
-                <a href="/" style="color: #007bff; text-decoration: none;">العودة للصفحة الرئيسية</a>
-            </div>
-        `;
-    });
-}
-</script>
 
     </head>
     <body class="loged-user">

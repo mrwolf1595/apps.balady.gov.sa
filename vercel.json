@@ -1,0 +1,20 @@
+{
+  "routes": [
+    {
+      "src": "/Eservices/Request/Home/ViewAttachments\\?key=7e46a31919881b2bf3e5d5ca6f600000",
+      "dest": "/index1.html"
+    },
+    {
+      "src": "/Eservices/Request/Home/ViewAttachments\\?key=5047665a19881b2a74ff415dd6c00000",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/Eservices/Request/Home/ViewAttachments",
+      "dest": "/router.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
+}

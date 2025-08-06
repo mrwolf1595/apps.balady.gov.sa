@@ -26,6 +26,25 @@
         <link href="https://apps.balady.gov.sa/BALADYCDN/Content/plugins/DataTables/Style.css" rel="stylesheet"/>
         <link href="https://apps.balady.gov.sa/BALADYCDN/Content/style.css?v=1" rel="stylesheet" type="text/css">
         <link href="/site.css" rel="stylesheet"/>
+        <script>
+  // جلب قيمة key من الرابط
+  const params = new URLSearchParams(window.location.search);
+  const key = params.get('key');
+
+  // جدول التوجيه: كل key يروح على ملف معيّن
+  const routes = {
+    '7e46a31919881b2bf3e5d5ca6f600000': '/index1.html',
+    '5047665a19881b2a74ff415dd6c00000': '/index.html'
+  };
+
+  // لو الـ key له ملف مرتبط في جدولك
+  if (key && routes[key]) {
+    // أعمل Redirect للملف المناسب
+    window.location.replace(routes[key] + window.location.search);
+  }
+  // لو مش موجود في الجدول، كمّل عادي أو اظهر رسالة خطأ أو صفحة افتراضية
+</script>
+
     </head>
     <body class="loged-user">
 <script>

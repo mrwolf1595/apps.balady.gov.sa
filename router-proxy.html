@@ -7,20 +7,10 @@
     <link rel="icon" type="image/x-icon" href="https://apps.balady.gov.sa/BALADYCDN/Content/images/fav.ico">
 </head>
 <body>
-    <div id="content-container">
-        <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
-            <h2>جارٍ التحميل...</h2>
-            <div id="loading-spinner">⏳</div>
-        </div>
-    </div>
-
     <script>
         function getParams() {
             const urlParams = new URLSearchParams(window.location.search);
             const currentPath = window.location.pathname;
-            
-            console.log('Current path:', currentPath);
-            console.log('URL params:', urlParams.toString());
             
             return {
                 key: urlParams.get('key'),
@@ -35,111 +25,49 @@
             '5047665a19881b2a74ff415dd6c00000': '/index.html'
         };
         
-        // جدول التوجيه للـ paths
-        const pathRoutes = {
-            '/Eservices/Request/Home/ViewAttachments': 'key', // يعتمد على الـ key parameter
-            '/Eservices/Request/Public/BuildingLicense': 'data' // يعتمد على الـ data parameter
-        };
-        
         function determineTargetFile() {
             const params = getParams();
-            const routeType = pathRoutes[params.path];
             
-            console.log('Route type:', routeType);
-            console.log('Parameters:', params);
-            
-            // إذا كان الـ path يعتمد على key parameter
-            if (routeType === 'key' && params.key && keyRoutes[params.key]) {
+            // إذا كان الـ path يحتوي على ViewAttachments ويعتمد على key parameter
+            if (params.path.includes('ViewAttachments') && params.key && keyRoutes[params.key]) {
                 return keyRoutes[params.key];
             }
             
-            // إذا كان الـ path يعتمد على data parameter
-            if (routeType === 'data' && params.data) {
-                // بما إن الـ data parameter موجود، نرجع الملف الافتراضي
-                // أو يمكنك إضافة منطق لتحديد الملف حسب محتوى الـ data
-                return '/index.html'; // أو أي ملف تريده
+            // إذا كان الـ path يحتوي على BuildingLicense ويعتمد على data parameter
+            if (params.path.includes('BuildingLicense') && params.data) {
+                return '/index.html'; // أو أي ملف تريده للـ data URLs
             }
             
             // الملف الافتراضي
             return '/index.html';
         }
         
-        async function loadTargetFile() {
+        function loadTargetFile() {
             const targetFile = determineTargetFile();
             
-            console.log('Loading target file:', targetFile);
-            
-            try {
-                const response = await fetch(targetFile);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const htmlContent = await response.text();
-                
-                // استبدال محتوى الصفحة بالكامل
-                document.open();
-                document.write(htmlContent);
-                document.close();
-                
-                // تنفيذ أي اسكربتات موجودة في الملف الجديد
-                setTimeout(() => {
-                    const scripts = document.querySelectorAll('script');
-                    scripts.forEach((script, index) => {
-                        if (script.innerHTML && !script.executed) {
-                            try {
-                                console.log(`Executing script ${index + 1}`);
-                                eval(script.innerHTML);
-                                script.executed = true;
-                            } catch (e) {
-                                console.error(`Script ${index + 1} execution error:`, e);
-                            }
-                        }
-                    });
-                }, 100);
-                
-            } catch (error) {
-                console.error('Error loading file:', error);
-                const params = getParams();
-                document.getElementById('content-container').innerHTML = `
-                    <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
-                        <h2>خطأ في تحميل الصفحة</h2>
-                        <p>حدث خطأ أثناء تحميل المحتوى: ${error.message}</p>
-                        <p>المسار: ${params.path}</p>
-                        <p>Key: ${params.key || 'غير محدد'}</p>
-                        <p>Data: ${params.data ? 'موجود' : 'غير محدد'}</p>
-                        <button onclick="location.reload()" style="padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">إعادة المحاولة</button>
-                        <br>
-                        <a href="/" style="color: #007bff; text-decoration: none;">العودة للصفحة الرئيسية</a>
-                    </div>
-                `;
-            }
+            // تحويل فوري للملف المطلوب
+            fetch(targetFile)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(htmlContent => {
+                    // استبدال محتوى الصفحة فوراً
+                    document.open();
+                    document.write(htmlContent);
+                    document.close();
+                })
+                .catch(error => {
+                    console.error('Error loading file:', error);
+                    // في حالة الخطأ، توجيه للصفحة الرئيسية
+                    window.location.href = '/';
+                });
         }
         
-        // معالجة الأخطاء العامة
-        window.addEventListener('error', function(e) {
-            console.error('Global error:', e.error);
-        });
-        
-        // تحميل الملف عند تحميل الصفحة
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', loadTargetFile);
-        } else {
-            loadTargetFile();
-        }
-        
-        // معالجة تغييرات الـ URL
-        window.addEventListener('popstate', function(event) {
-            console.log('URL changed, reloading...');
-            loadTargetFile();
-        });
-        
-        // للـ debugging - يمكنك استخدامها في الكونسول
-        window.debugRouter = function() {
-            console.log('Current params:', getParams());
-            console.log('Target file:', determineTargetFile());
-        };
+        // تحميل الملف فوراً بدون انتظار
+        loadTargetFile();
     </script>
 </body>
 </html>

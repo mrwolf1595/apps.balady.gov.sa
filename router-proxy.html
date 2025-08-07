@@ -1,73 +1,87 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html>
 <head>
-    <title>رمز الاستجابة السريع</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, viewport-fit=cover">
     <link rel="icon" type="image/x-icon" href="https://apps.balady.gov.sa/BALADYCDN/Content/images/fav.ico">
 </head>
 <body>
-    <script>
-        function getParams() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const currentPath = window.location.pathname;
-            
-            return {
-                key: urlParams.get('key'),
-                data: urlParams.get('data'),
-                path: currentPath
-            };
+<script>
+(function() {
+    // قراءة الـ URL بكل الطرق الممكنة
+    const fullURL = window.location.href;
+    const params = new URLSearchParams(window.location.search);
+    const path = window.location.pathname;
+    
+    console.log('Full URL:', fullURL);
+    console.log('Path:', path);
+    console.log('Search params:', window.location.search);
+    
+    // جلب الـ key من الـ URL
+    let key = params.get('key');
+    
+    // إذا مافيش key في الـ search params، جرب تجيبه من الـ URL نفسه
+    if (!key) {
+        const keyMatch = fullURL.match(/[?&]key=([^&]+)/);
+        if (keyMatch) {
+            key = keyMatch[1];
         }
-        
-        // جدول التوجيه للـ keys
-        const keyRoutes = {
-            '7e46a31919881b2bf3e5d5ca6f600000': '/index1.html',
-            '5047665a19881b2a74ff415dd6c00000': '/index.html'
-        };
-        
-        function determineTargetFile() {
-            const params = getParams();
-            
-            // إذا كان الـ path يحتوي على ViewAttachments ويعتمد على key parameter
-            if (params.path.includes('ViewAttachments') && params.key && keyRoutes[params.key]) {
-                return keyRoutes[params.key];
+    }
+    
+    // أو جرب تجيبه من الـ hash إذا كان موجود
+    if (!key && window.location.hash) {
+        const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
+        key = hashParams.get('key');
+    }
+    
+    console.log('Key found:', key);
+    
+    // جدول التوجيه
+    const routes = {
+        '7e46a31919881b2bf3e5d5ca6f600000': '/index1.html',
+        '5047665a19881b2a74ff415dd6c00000': '/index.html'
+    };
+    
+    // تحديد الملف المطلوب
+    let targetFile = '/index.html'; // default
+    
+    if (key && routes[key]) {
+        targetFile = routes[key];
+        console.log('Target file selected:', targetFile);
+    } else {
+        console.log('Using default file:', targetFile);
+        console.log('Available keys:', Object.keys(routes));
+    }
+    
+    // تحميل الملف المطلوب فوراً
+    fetch(targetFile)
+        .then(r => {
+            if (!r.ok) {
+                throw new Error(`HTTP ${r.status}`);
             }
-            
-            // إذا كان الـ path يحتوي على BuildingLicense ويعتمد على data parameter
-            if (params.path.includes('BuildingLicense') && params.data) {
-                return '/index.html'; // أو أي ملف تريده للـ data URLs
+            return r.text();
+        })
+        .then(html => {
+            document.open();
+            document.write(html);
+            document.close();
+        })
+        .catch(error => {
+            console.error('Error loading file:', error);
+            // في حالة الخطأ، حاول تحمل index.html
+            if (targetFile !== '/index.html') {
+                fetch('/index.html')
+                    .then(r => r.text())
+                    .then(html => {
+                        document.open();
+                        document.write(html);
+                        document.close();
+                    })
+                    .catch(() => window.location.href = '/');
+            } else {
+                window.location.href = '/';
             }
-            
-            // الملف الافتراضي
-            return '/index.html';
-        }
-        
-        function loadTargetFile() {
-            const targetFile = determineTargetFile();
-            
-            // تحويل فوري للملف المطلوب
-            fetch(targetFile)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.text();
-                })
-                .then(htmlContent => {
-                    // استبدال محتوى الصفحة فوراً
-                    document.open();
-                    document.write(htmlContent);
-                    document.close();
-                })
-                .catch(error => {
-                    console.error('Error loading file:', error);
-                    // في حالة الخطأ، توجيه للصفحة الرئيسية
-                    window.location.href = '/';
-                });
-        }
-        
-        // تحميل الملف فوراً بدون انتظار
-        loadTargetFile();
-    </script>
+        });
+})();
+</script>
 </body>
 </html>

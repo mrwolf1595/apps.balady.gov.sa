@@ -5,86 +5,100 @@
     <link rel="icon" type="image/x-icon" href="https://apps.balady.gov.sa/BALADYCDN/Content/images/fav.ico">
 </head>
 <body>
-<div id="debug-info" style="background: #000; color: #0f0; padding: 20px; font-family: monospace; white-space: pre-wrap;"></div>
-
 <script>
 (function() {
-    const debugDiv = document.getElementById('debug-info');
-    
-    function log(msg) {
-        console.log(msg);
-        debugDiv.innerHTML += msg + '\n';
-    }
-    
-    // قراءة الـ URL بكل الطرق الممكنة
     const fullURL = window.location.href;
     const params = new URLSearchParams(window.location.search);
     const path = window.location.pathname;
     
-    log('=== DEBUG INFO ===');
-    log('Full URL: ' + fullURL);
-    log('Path: ' + path);
-    log('Search: ' + window.location.search);
-    log('Hash: ' + window.location.hash);
+    console.log('Full URL:', fullURL);
+    console.log('Path:', path);
     
-    // جلب الـ key من الـ URL
+    // جلب key أو data parameter
     let key = params.get('key');
-    log('Key from search params: ' + key);
+    let data = params.get('data');
     
-    // إذا مافيش key في الـ search params، جرب تجيبه من الـ URL نفسه
-    if (!key) {
-        const keyMatch = fullURL.match(/[?&]key=([^&]+)/);
-        if (keyMatch) {
-            key = keyMatch[1];
-            log('Key from URL regex: ' + key);
-        }
-    }
+    console.log('Key found:', key);
+    console.log('Data found:', data ? 'Yes' : 'No');
     
-    // جدول التوجيه
-    const routes = {
+    // جدول التوجيه للـ keys
+    const keyRoutes = {
         '7e46a31919881b2bf3e5d5ca6f600000': '/index1.html',
         '5047665a19881b2a74ff415dd6c00000': '/index.html'
     };
     
-    log('Available routes: ' + JSON.stringify(routes, null, 2));
-    
     // تحديد الملف المطلوب
     let targetFile = '/index.html'; // default
     
-    if (key && routes[key]) {
-        targetFile = routes[key];
-        log('✓ Target file selected: ' + targetFile);
-    } else {
-        log('✗ Using default file: ' + targetFile);
-        log('✗ Key "' + key + '" not found in routes');
+    // إذا كان في key parameter
+    if (key && keyRoutes[key]) {
+        targetFile = keyRoutes[key];
+        console.log('Route selected by key:', targetFile);
+    }
+    // إذا كان في data parameter وبدايته bldyPrm
+    else if (data && data.startsWith('bldyPrm')) {
+        // فك تشفير البيانات وجلب الـ key منها
+        try {
+            const hexData = data.substring(7); // إزالة "bldyPrm"
+            let jsonString = '';
+            for (let i = 0; i < hexData.length; i += 2) {
+                jsonString += String.fromCharCode(parseInt(hexData.substr(i, 2), 16));
+            }
+            const decodedData = JSON.parse(jsonString);
+            console.log('Decoded data:', decodedData);
+            
+            // تحديد الملف حسب محتوى البيانات
+            // إذا كان في رقم رخصة معين، يروح على index1
+            if (decodedData['رقم الرخصة الصادر من الأمانة'] || 
+                decodedData['رقم شهادة إشغال'] ||
+                Object.keys(decodedData).length > 0) {
+                targetFile = '/index1.html';
+                console.log('Route selected by data content:', targetFile);
+            }
+        } catch (e) {
+            console.error('Error decoding data:', e);
+            // إذا فشل فك التشفير، استخدم index1 كـ fallback للـ data URLs
+            targetFile = '/index1.html';
+            console.log('Using fallback for data URL:', targetFile);
+        }
+    }
+    // إذا كان الـ path فيه BuildingLicense وما في key
+    else if (path.includes('BuildingLicense') && !key) {
+        targetFile = '/index1.html';
+        console.log('Route selected by BuildingLicense path:', targetFile);
     }
     
-    log('=== LOADING ' + targetFile + ' ===');
+    console.log('Final target file:', targetFile);
     
-    // انتظار 3 ثواني عشان تقرأ الـ debug info
-    setTimeout(() => {
-        fetch(targetFile)
-            .then(r => {
-                log('HTTP Status: ' + r.status);
-                if (!r.ok) {
-                    throw new Error(`HTTP ${r.status}`);
-                }
-                return r.text();
-            })
-            .then(html => {
-                log('✓ File loaded successfully, replacing content...');
-                document.open();
-                document.write(html);
-                document.close();
-            })
-            .catch(error => {
-                log('✗ Error loading file: ' + error.message);
-                debugDiv.innerHTML += '\n<h3 style="color: red;">ERROR: Could not load ' + targetFile + '</h3>';
-                debugDiv.innerHTML += '<p>Error: ' + error.message + '</p>';
-                debugDiv.innerHTML += '<p>Available files to check:</p>';
-                debugDiv.innerHTML += '<ul><li>/index.html</li><li>/index1.html</li></ul>';
-            });
-    }, 3000);
+    // تحميل الملف المطلوب فوراً
+    fetch(targetFile)
+        .then(r => {
+            if (!r.ok) {
+                throw new Error(`HTTP ${r.status}`);
+            }
+            return r.text();
+        })
+        .then(html => {
+            console.log('File loaded successfully, replacing content...');
+            document.open();
+            document.write(html);
+            document.close();
+        })
+        .catch(error => {
+            console.error('Error loading file:', error);
+            // جرب الملف البديل
+            const fallback = targetFile === '/index1.html' ? '/index.html' : '/index1.html';
+            console.log('Trying fallback:', fallback);
+            
+            fetch(fallback)
+                .then(r => r.text())
+                .then(html => {
+                    document.open();
+                    document.write(html);
+                    document.close();
+                })
+                .catch(() => window.location.href = '/');
+        });
 })();
 </script>
 </body>

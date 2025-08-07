@@ -5,35 +5,40 @@
     <link rel="icon" type="image/x-icon" href="https://apps.balady.gov.sa/BALADYCDN/Content/images/fav.ico">
 </head>
 <body>
+<div id="debug-info" style="background: #000; color: #0f0; padding: 20px; font-family: monospace; white-space: pre-wrap;"></div>
+
 <script>
 (function() {
+    const debugDiv = document.getElementById('debug-info');
+    
+    function log(msg) {
+        console.log(msg);
+        debugDiv.innerHTML += msg + '\n';
+    }
+    
     // قراءة الـ URL بكل الطرق الممكنة
     const fullURL = window.location.href;
     const params = new URLSearchParams(window.location.search);
     const path = window.location.pathname;
     
-    console.log('Full URL:', fullURL);
-    console.log('Path:', path);
-    console.log('Search params:', window.location.search);
+    log('=== DEBUG INFO ===');
+    log('Full URL: ' + fullURL);
+    log('Path: ' + path);
+    log('Search: ' + window.location.search);
+    log('Hash: ' + window.location.hash);
     
     // جلب الـ key من الـ URL
     let key = params.get('key');
+    log('Key from search params: ' + key);
     
     // إذا مافيش key في الـ search params، جرب تجيبه من الـ URL نفسه
     if (!key) {
         const keyMatch = fullURL.match(/[?&]key=([^&]+)/);
         if (keyMatch) {
             key = keyMatch[1];
+            log('Key from URL regex: ' + key);
         }
     }
-    
-    // أو جرب تجيبه من الـ hash إذا كان موجود
-    if (!key && window.location.hash) {
-        const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
-        key = hashParams.get('key');
-    }
-    
-    console.log('Key found:', key);
     
     // جدول التوجيه
     const routes = {
@@ -41,46 +46,45 @@
         '5047665a19881b2a74ff415dd6c00000': '/index.html'
     };
     
+    log('Available routes: ' + JSON.stringify(routes, null, 2));
+    
     // تحديد الملف المطلوب
     let targetFile = '/index.html'; // default
     
     if (key && routes[key]) {
         targetFile = routes[key];
-        console.log('Target file selected:', targetFile);
+        log('✓ Target file selected: ' + targetFile);
     } else {
-        console.log('Using default file:', targetFile);
-        console.log('Available keys:', Object.keys(routes));
+        log('✗ Using default file: ' + targetFile);
+        log('✗ Key "' + key + '" not found in routes');
     }
     
-    // تحميل الملف المطلوب فوراً
-    fetch(targetFile)
-        .then(r => {
-            if (!r.ok) {
-                throw new Error(`HTTP ${r.status}`);
-            }
-            return r.text();
-        })
-        .then(html => {
-            document.open();
-            document.write(html);
-            document.close();
-        })
-        .catch(error => {
-            console.error('Error loading file:', error);
-            // في حالة الخطأ، حاول تحمل index.html
-            if (targetFile !== '/index.html') {
-                fetch('/index.html')
-                    .then(r => r.text())
-                    .then(html => {
-                        document.open();
-                        document.write(html);
-                        document.close();
-                    })
-                    .catch(() => window.location.href = '/');
-            } else {
-                window.location.href = '/';
-            }
-        });
+    log('=== LOADING ' + targetFile + ' ===');
+    
+    // انتظار 3 ثواني عشان تقرأ الـ debug info
+    setTimeout(() => {
+        fetch(targetFile)
+            .then(r => {
+                log('HTTP Status: ' + r.status);
+                if (!r.ok) {
+                    throw new Error(`HTTP ${r.status}`);
+                }
+                return r.text();
+            })
+            .then(html => {
+                log('✓ File loaded successfully, replacing content...');
+                document.open();
+                document.write(html);
+                document.close();
+            })
+            .catch(error => {
+                log('✗ Error loading file: ' + error.message);
+                debugDiv.innerHTML += '\n<h3 style="color: red;">ERROR: Could not load ' + targetFile + '</h3>';
+                debugDiv.innerHTML += '<p>Error: ' + error.message + '</p>';
+                debugDiv.innerHTML += '<p>Available files to check:</p>';
+                debugDiv.innerHTML += '<ul><li>/index.html</li><li>/index1.html</li></ul>';
+            });
+    }, 3000);
 })();
 </script>
 </body>

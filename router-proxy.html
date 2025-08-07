@@ -16,41 +16,60 @@
 
     <script>
         function getParams() {
-            // جلب الـ parameters من الرابط الحالي أو من history
             const urlParams = new URLSearchParams(window.location.search);
-            const historyParams = new URLSearchParams(window.location.hash.replace('#', ''));
+            const currentPath = window.location.pathname;
+            
+            console.log('Current path:', currentPath);
+            console.log('URL params:', urlParams.toString());
             
             return {
-                fromUrl: urlParams.get('key'),
-                fromHistory: historyParams.get('key'),
-                current: urlParams.get('key') || historyParams.get('key')
+                key: urlParams.get('key'),
+                data: urlParams.get('data'),
+                path: currentPath
             };
         }
         
-        // جدول التوجيه: كل key يروح على ملف معيّن
-        const routes = {
+        // جدول التوجيه للـ keys
+        const keyRoutes = {
             '7e46a31919881b2bf3e5d5ca6f600000': '/index1.html',
             '5047665a19881b2a74ff415dd6c00000': '/index.html'
         };
         
-        async function loadTargetFile() {
+        // جدول التوجيه للـ paths
+        const pathRoutes = {
+            '/Eservices/Request/Home/ViewAttachments': 'key', // يعتمد على الـ key parameter
+            '/Eservices/Request/Public/BuildingLicense': 'data' // يعتمد على الـ data parameter
+        };
+        
+        function determineTargetFile() {
             const params = getParams();
-            const key = params.current;
+            const routeType = pathRoutes[params.path];
             
-            console.log('Parameters detected:', params);
-            console.log('Using key:', key);
+            console.log('Route type:', routeType);
+            console.log('Parameters:', params);
             
-            let targetFile = '/index.html'; // default
-            
-            // اختيار الملف حسب الـ key
-            if (key && routes[key]) {
-                targetFile = routes[key];
+            // إذا كان الـ path يعتمد على key parameter
+            if (routeType === 'key' && params.key && keyRoutes[params.key]) {
+                return keyRoutes[params.key];
             }
+            
+            // إذا كان الـ path يعتمد على data parameter
+            if (routeType === 'data' && params.data) {
+                // بما إن الـ data parameter موجود، نرجع الملف الافتراضي
+                // أو يمكنك إضافة منطق لتحديد الملف حسب محتوى الـ data
+                return '/index.html'; // أو أي ملف تريده
+            }
+            
+            // الملف الافتراضي
+            return '/index.html';
+        }
+        
+        async function loadTargetFile() {
+            const targetFile = determineTargetFile();
             
             console.log('Loading target file:', targetFile);
             
             try {
-                // جلب محتوى الملف المطلوب
                 const response = await fetch(targetFile);
                 
                 if (!response.ok) {
@@ -82,14 +101,17 @@
                 
             } catch (error) {
                 console.error('Error loading file:', error);
+                const params = getParams();
                 document.getElementById('content-container').innerHTML = `
                     <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
                         <h2>خطأ في تحميل الصفحة</h2>
                         <p>حدث خطأ أثناء تحميل المحتوى: ${error.message}</p>
-                        <p>Key المستخدم: ${key || 'غير محدد'}</p>
-                        <button onclick="location.reload()" style="padding: 10px 20px; margin: 10px;">إعادة المحاولة</button>
+                        <p>المسار: ${params.path}</p>
+                        <p>Key: ${params.key || 'غير محدد'}</p>
+                        <p>Data: ${params.data ? 'موجود' : 'غير محدد'}</p>
+                        <button onclick="location.reload()" style="padding: 10px 20px; margin: 10px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">إعادة المحاولة</button>
                         <br>
-                        <a href="/" style="color: #007bff;">العودة للصفحة الرئيسية</a>
+                        <a href="/" style="color: #007bff; text-decoration: none;">العودة للصفحة الرئيسية</a>
                     </div>
                 `;
             }
@@ -112,6 +134,12 @@
             console.log('URL changed, reloading...');
             loadTargetFile();
         });
+        
+        // للـ debugging - يمكنك استخدامها في الكونسول
+        window.debugRouter = function() {
+            console.log('Current params:', getParams());
+            console.log('Target file:', determineTargetFile());
+        };
     </script>
 </body>
 </html>

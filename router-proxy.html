@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <title>رمز الاستجابة السريع</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, viewport-fit=cover">
+    <link rel="icon" type="image/x-icon" href="https://apps.balady.gov.sa/BALADYCDN/Content/images/fav.ico">
+</head>
+<body>
+    <div id="content-container"></div>
+
+    <script>
+        // جلب قيمة key من الرابط
+        const params = new URLSearchParams(window.location.search);
+        const key = params.get('key');
+        
+        // جدول التوجيه: كل key يروح على ملف معيّن
+        const routes = {
+            '7e46a31919881b2bf3e5d5ca6f600000': '/index1.html',
+            '5047665a19881b2a74ff415dd6c00000': '/index.html'
+        };
+        
+        async function loadTargetFile() {
+            let targetFile = '/index.html'; // default
+            
+            // اختيار الملف حسب الـ key
+            if (key && routes[key]) {
+                targetFile = routes[key];
+            }
+            
+            console.log('Loading target file:', targetFile);
+            
+            try {
+                // جلب محتوى الملف المطلوب
+                const response = await fetch(targetFile);
+                const htmlContent = await response.text();
+                
+                // استبدال محتوى الصفحة بالكامل
+                document.open();
+                document.write(htmlContent);
+                document.close();
+                
+                // تنفيذ أي اسكربتات موجودة في الملف الجديد
+                const scripts = document.querySelectorAll('script');
+                scripts.forEach(script => {
+                    if (script.innerHTML) {
+                        try {
+                            eval(script.innerHTML);
+                        } catch (e) {
+                            console.error('Script execution error:', e);
+                        }
+                    }
+                });
+                
+            } catch (error) {
+                console.error('Error loading file:', error);
+                document.body.innerHTML = `
+                    <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+                        <h2>خطأ في تحميل الصفحة</h2>
+                        <p>حدث خطأ أثناء تحميل المحتوى</p>
+                        <a href="/" style="color: #007bff;">العودة للصفحة الرئيسية</a>
+                    </div>
+                `;
+            }
+        }
+        
+        // تحميل الملف فوراً
+        loadTargetFile();
+    </script>
+</body>
+</html>

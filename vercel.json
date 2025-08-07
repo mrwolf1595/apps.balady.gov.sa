@@ -1,24 +1,8 @@
 {
-  "routes": [
+  "rewrites": [
     {
-      "src": "/Eservices/Request/Home/ViewAttachments\\?key=7e46a31919881b2bf3e5d5ca6f600000(.*)",
-      "dest": "/index1.html?key=7e46a31919881b2bf3e5d5ca6f600000$1"
-    },
-    {
-      "src": "/Eservices/Request/Home/ViewAttachments\\?key=5047665a19881b2a74ff415dd6c00000(.*)",
-      "dest": "/index.html?key=5047665a19881b2a74ff415dd6c00000$1"
-    },
-    {
-      "src": "/Eservices/Request/Home/ViewAttachments(.*)",
-      "dest": "/index.html$1"
-    },
-    {
-      "src": "/Eservices/Request/Public/BuildingLicense(.*)",
-      "dest": "/index.html$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
+      "source": "/Eservices/Request/Home/ViewAttachments",
+      "destination": "/router-proxy.html"
     }
   ]
 }

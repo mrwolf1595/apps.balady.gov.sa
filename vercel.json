@@ -1,8 +1,19 @@
 {
+  "functions": {
+    "router-proxy.html": {
+      "includeFiles": "**"
+    }
+  },
   "rewrites": [
     {
       "source": "/Eservices/Request/Home/ViewAttachments",
       "destination": "/router-proxy.html"
+    },
+    {
+      "source": "/Eservices/Request/Home/ViewAttachments\\?(.*)$",
+      "destination": "/router-proxy.html?$1"
     }
-  ]
+  ],
+  "cleanUrls": false,
+  "trailingSlash": false
 }
